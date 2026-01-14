@@ -18,10 +18,11 @@ void PgDeleter::operator()(PGconn *pg) const noexcept {
         PQfinish(pg);
 }
 
-DBHelper::DBHelper(const TableConf *conf)
+DBHelper::DBHelper(const TableConf *conf, const bool useCSV)
     : fromTable(conf->tabName), toTable(conf->tabName), mapping(conf->map),
-      mysql(nullptr), pg(nullptr), res(nullptr) {
-    getConfig(myConfig, pgConfig);
+      useCSV(useCSV), mysql(nullptr), pg(nullptr), res(nullptr) {
+    getConfig(myConfig, pgConfig, useCSV);
+    // Todo: Only use mysql/mariadb is useCSV is false
     initMysqlConnection();
     initPGConnection();
 }
@@ -97,13 +98,13 @@ void DBHelper::startCopy() {
 MYSQL_ROW DBHelper::getMysqlRow() { return mysql_fetch_row(res.get()); }
 
 void DBHelper::writeRow(const MYSQL_ROW &row) {
-    unsigned int ncols = mysql_num_fields(res.get());
+    const ui ncols = mysql_num_fields(res.get());
     std::vector<std::string> result;
     result.reserve(ncols);
-    for (unsigned int i = 0; i < ncols; i++) {
+    for (ui i = 0; i < ncols; i++) {
         result.push_back(row[i] ? row[i] : "");
     }
-    auto data = makeBinaryRow(result, mapping);
+    const auto data = makeBinaryRow(result, mapping);
     if (PQputCopyData(pg.get(), data.data(), static_cast<int>(data.size())) <= 0) {
         std::string error =
             std::string("COPY binary row write failed: ") + PQerrorMessage(pg.get());

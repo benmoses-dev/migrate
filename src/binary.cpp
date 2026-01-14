@@ -49,7 +49,7 @@ std::vector<char> timestamptzConverter(const std::string &s) {
 // macaddr
 std::vector<char> macaddrConverter(const std::string &s) {
     std::vector<char> out(6);
-    unsigned int bytes[6];
+    ui bytes[6];
     sscanf(s.c_str(), "%x:%x:%x:%x:%x:%x", &bytes[0], &bytes[1], &bytes[2], &bytes[3],
            &bytes[4], &bytes[5]);
     for (size_t i = 0; i < 6; i++)

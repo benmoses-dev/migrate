@@ -2,4 +2,4 @@
 
 #include "db_helper.hpp"
 
-void getConfig(MysqlConfig &myConfig, PgsqlConfig &pgConfig);
+void getConfig(MysqlConfig &myConfig, PgsqlConfig &pgConfig, const bool useCSV);

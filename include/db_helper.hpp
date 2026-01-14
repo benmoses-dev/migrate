@@ -6,12 +6,14 @@
 #include <memory>
 #include <string>
 
+using ui = unsigned int;
+
 struct MysqlConfig {
     std::string myname;
     std::string myhost;
     std::string myuser;
     std::string mypass;
-    unsigned int myport;
+    ui myport;
 };
 
 struct PgsqlConfig {
@@ -19,7 +21,7 @@ struct PgsqlConfig {
     std::string pghost;
     std::string pguser;
     std::string pgpass;
-    unsigned int pgport;
+    ui pgport;
 };
 
 enum class PgType { INT32, INT64, TEXT, TIMESTAMPTZ, MACADDR };
@@ -53,7 +55,7 @@ using PgPtr = std::unique_ptr<PGconn, PgDeleter>;
 
 class DBHelper {
   public:
-    DBHelper(const TableConf *config);
+    DBHelper(const TableConf *config, const bool useCSV);
 
     void migrateTable();
 
@@ -61,6 +63,7 @@ class DBHelper {
     const std::string fromTable;
     const std::string toTable;
     const std::vector<ColumnMapping> &mapping;
+    const bool useCSV;
 
     MysqlPtr mysql;
     PgPtr pg;

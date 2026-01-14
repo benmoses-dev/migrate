@@ -17,8 +17,8 @@ struct ThreadJoiner {
     }
 };
 
-void migrateTable(const TableConf *conf) {
-    std::unique_ptr<DBHelper> dbHelper = std::make_unique<DBHelper>(conf);
+void migrateTable(const TableConf *conf, const bool useCSV) {
+    const std::unique_ptr<DBHelper> dbHelper = std::make_unique<DBHelper>(conf, useCSV);
     dbHelper->migrateTable();
 }
 
@@ -57,25 +57,33 @@ int main() {
      * --- You can ignore everything after this line ---
      */
 
-    const unsigned int max_threads = std::thread::hardware_concurrency();
+    /**
+     * Todo: Use CLI 11 to parse arguments:
+     * --csv to read from a csv file per table (add .csv to the map name above).
+     *
+     * Also, use csv-parser to read the CSV file.
+     */
+
+    const bool useCSV = false;
+    const ui max_threads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     threads.reserve(max_threads);
-    std::atomic<size_t> next{0};
+    std::atomic<std::size_t> next{0};
     std::exception_ptr eptr = nullptr;
     std::atomic<bool> stop = {false};
 
     {
         ThreadJoiner joiner{threads};
-        for (size_t i = 0; i < max_threads; i++) {
+        for (ui i = 0; i < max_threads; i++) {
             threads.emplace_back([&maps, &next, &eptr, &stop]() {
                 while (!stop) {
-                    size_t at = next.fetch_add(1, std::memory_order_relaxed);
+                    const std::size_t at = next.fetch_add(1, std::memory_order_relaxed);
                     if (at >= maps.size()) {
                         return;
                     }
                     try {
-                        auto config = maps[at];
-                        migrateTable(config);
+                        const auto config = maps[at];
+                        migrateTable(config, useCSV);
                     } catch (...) {
                         if (!eptr) {
                             eptr = std::current_exception();
