@@ -1,6 +1,7 @@
 #include "binary.hpp"
 #include "csv.hpp"
 #include "db_helper.hpp"
+#include <CLI/CLI.hpp>
 #include <array>
 #include <atomic>
 #include <exception>

@@ -18,9 +18,9 @@ void PgDeleter::operator()(PGconn *pg) const noexcept {
         PQfinish(pg);
 }
 
-DBHelper::DBHelper(const TableConf *conf, const bool useCSV)
+DBHelper::DBHelper(const TableConf *conf, const bool _useCSV)
     : fromTable(conf->tabName), toTable(conf->tabName), mapping(conf->map),
-      useCSV(useCSV), mysql(nullptr), pg(nullptr), res(nullptr) {
+      useCSV(_useCSV), mysql(nullptr), pg(nullptr), res(nullptr) {
     getConfig(myConfig, pgConfig, useCSV);
     // Todo: Only use mysql/mariadb is useCSV is false
     initMysqlConnection();

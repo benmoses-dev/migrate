@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 include(FetchContent)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -47,7 +47,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(csv)
 target_include_directories(migrate PRIVATE csv)
-target_link_libraries(migrate csv)
+target_link_libraries(migrate PRIVATE csv)
+
+FetchContent_Declare(
+    cli11_proj
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_SHALLOW TRUE
+    GIT_TAG v2.6.1
+)
+
+FetchContent_MakeAvailable(cli11_proj)
+target_link_libraries(migrate PRIVATE CLI11::CLI11)
 
 find_package(PostgreSQL REQUIRED)
 target_include_directories(migrate PRIVATE ${PostgreSQL_INCLUDE_DIRS})
