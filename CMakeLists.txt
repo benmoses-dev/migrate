@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
+include(FetchContent)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -36,8 +37,17 @@ if(FAST_BUILD)
 endif()
 
 add_executable(migrate src/main.cpp src/io_helper.cpp src/db_helper.cpp src/binary.cpp)
-
 target_include_directories(migrate PRIVATE include)
+
+FetchContent_Declare(
+    csv
+    GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
+    GIT_SHALLOW TRUE
+    GIT_TAG 2.3.0
+)
+FetchContent_MakeAvailable(csv)
+target_include_directories(migrate PRIVATE csv)
+target_link_libraries(migrate csv)
 
 find_package(PostgreSQL REQUIRED)
 target_include_directories(migrate PRIVATE ${PostgreSQL_INCLUDE_DIRS})

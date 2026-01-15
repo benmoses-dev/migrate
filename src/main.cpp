@@ -1,4 +1,5 @@
 #include "binary.hpp"
+#include "csv.hpp"
 #include "db_helper.hpp"
 #include <array>
 #include <atomic>
@@ -60,8 +61,6 @@ int main() {
     /**
      * Todo: Use CLI 11 to parse arguments:
      * --csv to read from a csv file per table (add .csv to the map name above).
-     *
-     * Also, use csv-parser to read the CSV file.
      */
 
     const bool useCSV = false;
