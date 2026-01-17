@@ -1,7 +1,7 @@
 #pragma once
 
+#include <map>
 #include <string>
-#include <unordered_map>
 
 struct MysqlConfig {
     std::string myname;
@@ -27,6 +27,7 @@ enum class PgType {
     FLOAT8,
     BOOL,
     TEXT,
+    DATE,
     TIME,
     TIMESTAMP,
     TIMESTAMPTZ,
@@ -39,5 +40,10 @@ enum class PgType {
 
 struct TableConf {
     const std::string tabName;
-    const std::unordered_map<std::string, PgType> map;
+    const std::map<std::string, PgType> map;
+};
+
+struct Field {
+    const std::string column;
+    const std::string value;
 };

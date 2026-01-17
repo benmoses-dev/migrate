@@ -36,7 +36,7 @@ class DBHelper {
   private:
     const std::string fromTable;
     const std::string toTable;
-    const std::unordered_map<std::string, PgType> &mapping;
+    const std::map<std::string, PgType> &mapping;
     const bool useCSV;
     const std::unordered_map<PgType,
                              std::function<std::vector<char>(const std::string &)>>
@@ -48,6 +48,7 @@ class DBHelper {
             {PgType::FLOAT8, float8Converter},
             {PgType::BOOL, boolConverter},
             {PgType::TEXT, textConverter},
+            {PgType::DATE, dateConverter},
             {PgType::TIME, timeConverter},
             {PgType::TIMESTAMP, timestampConverter},
             {PgType::TIMESTAMPTZ, timestamptzConverter},
@@ -67,7 +68,7 @@ class DBHelper {
 
     void startCopy();
     MYSQL_ROW getMysqlRow();
-    void writeData(const std::vector<std::string> &result);
+    void writeData(const std::vector<Field> &result);
     void writeMysqlRow(const MYSQL_ROW &row);
     void writeCSVRow(const csv::CSVRow &row);
     void endCopy();

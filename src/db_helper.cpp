@@ -39,10 +39,12 @@ void DBHelper::initMysqlConnection() {
         throw std::runtime_error(error);
     }
     std::string cols;
-    for (size_t i = 0; i < mapping.size(); i++) {
-        cols += mapping[i].name;
+    std::size_t i = 0;
+    for (const auto &m : mapping) {
+        cols += m.first;
         if (i + 1 < mapping.size())
             cols += ", ";
+        i++;
     }
     std::string querySQL = "SELECT " + cols + " FROM " + fromTable;
     if (mysql_query(mysql.get(), querySQL.c_str())) {
@@ -73,10 +75,12 @@ void DBHelper::initPGConnection() {
 
 void DBHelper::startCopy() {
     std::string copyCmd = "COPY " + toTable + " (";
-    for (std::size_t i = 0; i < mapping.size(); i++) {
-        copyCmd += mapping[i].name;
+    std::size_t i = 0;
+    for (const auto &m : mapping) {
+        copyCmd += m.first;
         if (i + 1 < mapping.size())
             copyCmd += ", ";
+        i++;
     }
     copyCmd += ") FROM STDIN BINARY";
     PGresult *r = PQexec(pg.get(), copyCmd.c_str());
@@ -97,7 +101,7 @@ void DBHelper::startCopy() {
 
 MYSQL_ROW DBHelper::getMysqlRow() { return mysql_fetch_row(res.get()); }
 
-void DBHelper::writeData(const std::vector<std::string> &result) {
+void DBHelper::writeData(const std::vector<Field> &result) {
     const auto data = makeBinaryRow(result, mapping, converters);
     if (PQputCopyData(pg.get(), data.data(), static_cast<int>(data.size())) <= 0) {
         const std::string error =
@@ -107,22 +111,23 @@ void DBHelper::writeData(const std::vector<std::string> &result) {
 }
 
 void DBHelper::writeMysqlRow(const MYSQL_ROW &row) {
-    const std::uint32_t ncols = mysql_num_fields(res.get());
-    std::vector<std::string> result;
-    result.reserve(ncols);
-    for (std::uint32_t i = 0; i < ncols; i++) {
-        result.push_back(row[i] ? row[i] : "");
-    }
-    writeData(result);
+    // Todo: Need to get the column name at the same time for converters
+    // const std::uint32_t ncols = mysql_num_fields(res.get());
+    // std::vector<std::string> result;
+    // result.reserve(ncols);
+    // for (std::uint32_t i = 0; i < ncols; i++) {
+    //     result.push_back(row[i] ? row[i] : "");
+    // }
+    // writeData(result);
 }
 
 void DBHelper::writeCSVRow(const csv::CSVRow &row) {
-    const std::size_t ncols = row.size();
-    std::vector<std::string> result;
+    const std::size_t ncols = mapping.size();
+    std::vector<Field> result;
     result.reserve(ncols);
-    for (csv::CSVField &field : row) {
-        const std::string val = field.get<std::string>();
-        result.push_back(val);
+    for (const auto &m : mapping) {
+        const std::string &val = row[m.first].get<std::string>();
+        result.emplace_back(m.first, val);
     }
     writeData(result);
 }
@@ -209,7 +214,6 @@ void DBHelper::migrateTable() {
         for (const csv::CSVRow &row : reader) {
             writeCSVRow(row);
         }
-        throw std::runtime_error("CSV parsing not implemented yet!");
     }
     endCopy();
     // createIndexes();

@@ -44,7 +44,7 @@ int main() {
 
     const TableConf jobMap = {"jobs",
                               {{"id", PgType::INT64},
-                               {"start_date", PgType::TEXT},
+                               {"start_date", PgType::DATE},
                                {"site_id", PgType::INT64},
                                {"created_at", PgType::TIMESTAMPTZ},
                                {"updated_at", PgType::TIMESTAMPTZ}}};
@@ -60,7 +60,7 @@ int main() {
      * --csv to read from a csv file per table (add .csv to the map name above).
      */
 
-    const bool useCSV = false;
+    const bool useCSV = true;
     const std::uint32_t max_threads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     threads.reserve(max_threads);
@@ -78,7 +78,7 @@ int main() {
                         return;
                     }
                     try {
-                        const auto config = maps[at];
+                        const auto &config = maps[at];
                         migrateTable(config, useCSV);
                     } catch (...) {
                         if (!eptr) {

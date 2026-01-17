@@ -408,8 +408,7 @@ std::vector<char> enumConverter(const std::string &s) {
 }
 
 std::vector<char> makeBinaryRow(
-    const std::vector<std::string> &row,
-    const std::unordered_map<std::string, PgType> &mapping,
+    const std::vector<Field> &row, const std::map<std::string, PgType> &mapping,
     const std::unordered_map<
         PgType, std::function<std::vector<char>(const std::string &)>> &converters) {
     std::vector<char> out;
@@ -417,7 +416,7 @@ std::vector<char> makeBinaryRow(
     out.insert(out.end(), reinterpret_cast<char *>(&ncols),
                reinterpret_cast<char *>(&ncols) + 2);
     for (std::size_t i = 0; i < row.size(); i++) {
-        const std::string &val = row[i];
+        const std::string &val = row[i].value;
         if (val.empty()) {
             int32_t nullLen = htonl(-1);
             out.insert(out.end(), reinterpret_cast<char *>(&nullLen),
@@ -425,7 +424,7 @@ std::vector<char> makeBinaryRow(
             continue;
         }
         try {
-            const auto &t = mapping.at(val);
+            const auto &t = mapping.at(row[i].column);
             const auto &converter = converters.at(t); // Will throw if it doesn't exist
             const auto &buf = converter(val);
             int32_t len = htonl(static_cast<int32_t>(buf.size()));
