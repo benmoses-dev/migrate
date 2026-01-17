@@ -1,10 +1,12 @@
 #include "binary.hpp"
+#include <algorithm>
 #include <arpa/inet.h>
 #include <cstring>
 #include <ctime>
 #include <endian.h>
+#include <stdexcept>
 
-// Todo: add more converters
+// Todo: tidy up
 
 std::vector<char> int16Converter(const std::string &s) {
     if (s.empty()) {
@@ -405,8 +407,10 @@ std::vector<char> enumConverter(const std::string &s) {
     return textConverter(s);
 }
 
-std::vector<char> makeBinaryRow(const std::vector<std::string> &mysqlRow,
-                                const std::vector<ColumnMapping> &mapping) {
+std::vector<char> makeBinaryRow(
+    const std::vector<std::string> &mysqlRow, const std::vector<ColumnMapping> &mapping,
+    const std::unordered_map<
+        PgType, std::function<std::vector<char>(const std::string &)>> &converters) {
     std::vector<char> out;
     int16_t ncols = htons(static_cast<int16_t>(mapping.size()));
     out.insert(out.end(), reinterpret_cast<char *>(&ncols),
@@ -419,7 +423,9 @@ std::vector<char> makeBinaryRow(const std::vector<std::string> &mysqlRow,
                        reinterpret_cast<char *>(&nullLen) + 4);
             continue;
         }
-        const auto &buf = mapping[i].converter(val);
+        const auto &t = mapping[i].type;
+        const auto &converter = converters.at(t);
+        const auto &buf = converter(val);
         int32_t len = htonl(static_cast<int32_t>(buf.size()));
         out.insert(out.end(), reinterpret_cast<char *>(&len),
                    reinterpret_cast<char *>(&len) + 4);

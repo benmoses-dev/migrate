@@ -1,39 +1,15 @@
 #pragma once
 
+#include "binary.hpp"
+#include "csv.hpp"
+#include "types.hpp"
 #include <functional>
 #include <libpq-fe.h>
 #include <mariadb/mysql.h>
 #include <memory>
 #include <string>
-
-struct MysqlConfig {
-    std::string myname;
-    std::string myhost;
-    std::string myuser;
-    std::string mypass;
-    std::uint32_t myport;
-};
-
-struct PgsqlConfig {
-    std::string pgname;
-    std::string pghost;
-    std::string pguser;
-    std::string pgpass;
-    std::uint32_t pgport;
-};
-
-enum class PgType { INT32, INT64, TEXT, TIMESTAMPTZ, MACADDR };
-
-struct ColumnMapping {
-    std::string name;
-    PgType type;
-    std::function<std::vector<char>(const std::string &)> converter;
-};
-
-struct TableConf {
-    const std::string tabName;
-    const std::vector<ColumnMapping> map;
-};
+#include <unordered_map>
+#include <vector>
 
 struct MysqlDeleter {
     void operator()(MYSQL *mysql) const noexcept;
@@ -62,6 +38,25 @@ class DBHelper {
     const std::string toTable;
     const std::vector<ColumnMapping> &mapping;
     const bool useCSV;
+    const std::unordered_map<PgType,
+                             std::function<std::vector<char>(const std::string &)>>
+        converters = {
+            {PgType::INT16, int16Converter},
+            {PgType::INT32, int32Converter},
+            {PgType::INT64, int64Converter},
+            {PgType::FLOAT4, float4Converter},
+            {PgType::FLOAT8, float8Converter},
+            {PgType::BOOL, boolConverter},
+            {PgType::TEXT, textConverter},
+            {PgType::TIME, timeConverter},
+            {PgType::TIMESTAMP, timestampConverter},
+            {PgType::TIMESTAMPTZ, timestamptzConverter},
+            {PgType::MACADDR, macaddrConverter},
+            {PgType::UUID, uuidConverter},
+            {PgType::JSON, jsonConverter},
+            {PgType::INET, inetConverter},
+            {PgType::ENUM, enumConverter},
+    };
 
     MysqlPtr mysql;
     PgPtr pg;
@@ -72,7 +67,9 @@ class DBHelper {
 
     void startCopy();
     MYSQL_ROW getMysqlRow();
-    void writeRow(const MYSQL_ROW &row);
+    void writeData(const std::vector<std::string> &result);
+    void writeMysqlRow(const MYSQL_ROW &row);
+    void writeCSVRow(const csv::CSVRow &row);
     void endCopy();
     void initPGConnection();
     void initMysqlConnection();

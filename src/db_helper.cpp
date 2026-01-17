@@ -1,8 +1,5 @@
 #include "db_helper.hpp"
-#include "binary.hpp"
-#include "csv.hpp"
 #include "io_helper.hpp"
-#include <iostream>
 
 void MysqlDeleter::operator()(MYSQL *mysql) const noexcept {
     if (mysql)
@@ -100,19 +97,34 @@ void DBHelper::startCopy() {
 
 MYSQL_ROW DBHelper::getMysqlRow() { return mysql_fetch_row(res.get()); }
 
-void DBHelper::writeRow(const MYSQL_ROW &row) {
+void DBHelper::writeData(const std::vector<std::string> &result) {
+    const auto data = makeBinaryRow(result, mapping, converters);
+    if (PQputCopyData(pg.get(), data.data(), static_cast<int>(data.size())) <= 0) {
+        const std::string error =
+            std::string("COPY binary row write failed: ") + PQerrorMessage(pg.get());
+        throw std::runtime_error(error);
+    }
+}
+
+void DBHelper::writeMysqlRow(const MYSQL_ROW &row) {
     const std::uint32_t ncols = mysql_num_fields(res.get());
     std::vector<std::string> result;
     result.reserve(ncols);
     for (std::uint32_t i = 0; i < ncols; i++) {
         result.push_back(row[i] ? row[i] : "");
     }
-    const auto data = makeBinaryRow(result, mapping);
-    if (PQputCopyData(pg.get(), data.data(), static_cast<int>(data.size())) <= 0) {
-        const std::string error =
-            std::string("COPY binary row write failed: ") + PQerrorMessage(pg.get());
-        throw std::runtime_error(error);
+    writeData(result);
+}
+
+void DBHelper::writeCSVRow(const csv::CSVRow &row) {
+    const std::size_t ncols = row.size();
+    std::vector<std::string> result;
+    result.reserve(ncols);
+    for (csv::CSVField &field : row) {
+        const std::string val = field.get<std::string>();
+        result.push_back(val);
     }
+    writeData(result);
 }
 
 void DBHelper::endCopy() {
@@ -190,10 +202,13 @@ void DBHelper::migrateTable() {
     if (!useCSV) {
         MYSQL_ROW row;
         while ((row = getMysqlRow())) {
-            writeRow(row);
+            writeMysqlRow(row);
         }
     } else {
-        // Use csv parser
+        csv::CSVReader reader(fromTable + ".csv");
+        for (const csv::CSVRow &row : reader) {
+            writeCSVRow(row);
+        }
         throw std::runtime_error("CSV parsing not implemented yet!");
     }
     endCopy();

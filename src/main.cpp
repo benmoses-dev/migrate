@@ -1,5 +1,5 @@
-#include "binary.hpp"
 #include "db_helper.hpp"
+#include "types.hpp"
 #include <CLI/CLI.hpp>
 #include <array>
 #include <atomic>
@@ -27,30 +27,27 @@ int main() {
     /**
      * --- Add tables to migrate and their mappings below ---
      */
-    const TableConf userMap = {
-        "users",
-        {{"id", PgType::INT64, int64Converter},
-         {"username", PgType::TEXT, textConverter},
-         {"email", PgType::TEXT, textConverter},
-         {"password", PgType::TEXT, textConverter},
-         {"created_at", PgType::TIMESTAMPTZ, timestamptzConverter},
-         {"updated_at", PgType::TIMESTAMPTZ, timestamptzConverter}}};
+    const TableConf userMap = {"users",
+                               {{"id", PgType::INT64},
+                                {"username", PgType::TEXT},
+                                {"email", PgType::TEXT},
+                                {"password", PgType::TEXT},
+                                {"created_at", PgType::TIMESTAMPTZ},
+                                {"updated_at", PgType::TIMESTAMPTZ}}};
 
-    const TableConf siteMap = {
-        "sites",
-        {{"id", PgType::INT64, int64Converter},
-         {"name", PgType::TEXT, textConverter},
-         {"user_id", PgType::INT64, int64Converter},
-         {"created_at", PgType::TIMESTAMPTZ, timestamptzConverter},
-         {"updated_at", PgType::TIMESTAMPTZ, timestamptzConverter}}};
+    const TableConf siteMap = {"sites",
+                               {{"id", PgType::INT64},
+                                {"name", PgType::TEXT},
+                                {"user_id", PgType::INT64},
+                                {"created_at", PgType::TIMESTAMPTZ},
+                                {"updated_at", PgType::TIMESTAMPTZ}}};
 
-    const TableConf jobMap = {
-        "jobs",
-        {{"id", PgType::INT64, int64Converter},
-         {"start_date", PgType::TEXT, textConverter},
-         {"site_id", PgType::INT64, int64Converter},
-         {"created_at", PgType::TIMESTAMPTZ, timestamptzConverter},
-         {"updated_at", PgType::TIMESTAMPTZ, timestamptzConverter}}};
+    const TableConf jobMap = {"jobs",
+                              {{"id", PgType::INT64},
+                               {"start_date", PgType::TEXT},
+                               {"site_id", PgType::INT64},
+                               {"created_at", PgType::TIMESTAMPTZ},
+                               {"updated_at", PgType::TIMESTAMPTZ}}};
 
     const std::array<const TableConf *, 3> maps = {&userMap, &siteMap, &jobMap};
 

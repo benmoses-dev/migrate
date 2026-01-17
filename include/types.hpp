@@ -1,0 +1,48 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+struct MysqlConfig {
+    std::string myname;
+    std::string myhost;
+    std::string myuser;
+    std::string mypass;
+    std::uint32_t myport;
+};
+
+struct PgsqlConfig {
+    std::string pgname;
+    std::string pghost;
+    std::string pguser;
+    std::string pgpass;
+    std::uint32_t pgport;
+};
+
+enum class PgType {
+    INT16,
+    INT32,
+    INT64,
+    FLOAT4,
+    FLOAT8,
+    BOOL,
+    TEXT,
+    TIME,
+    TIMESTAMP,
+    TIMESTAMPTZ,
+    MACADDR,
+    UUID,
+    JSON,
+    INET,
+    ENUM
+};
+
+struct ColumnMapping {
+    std::string name;
+    PgType type;
+};
+
+struct TableConf {
+    const std::string tabName;
+    const std::vector<ColumnMapping> map;
+};
