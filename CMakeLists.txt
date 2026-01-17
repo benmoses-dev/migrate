@@ -17,11 +17,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
         "Choose the build type (Debug, Release, RelWithDebInfo)" FORCE)
 endif()
 
-option(FAST_BUILD "Enable aggressive native optimizations. Not portable." OFF)
+option(FAST_BUILD "Enable aggressive native optimisations. Not portable." OFF)
 
 # Warnings may get annoying but it will help in the long run...
 set(CMAKE_CXX_FLAGS_DEBUG 
-    "-Og -g3 -Wall -Wextra -Wshadow -Wconversion -Wfloat-equal -Wpedantic -Werror=return-type -pthread")
+    "-Og -g3 -Wall -Wextra -Wshadow -Wconversion -Wfloat-equal -Wpedantic -Werror=return-type -pthread --coverage")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -march=x86-64-v2 -mtune=generic -DNDEBUG -pthread")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
@@ -67,3 +67,8 @@ find_path(MARIADB_INCLUDE_DIR mariadb/mysql.h)
 find_library(MARIADB_LIBRARIES NAMES mariadbclient mariadb)
 target_include_directories(migrate PRIVATE ${MARIADB_INCLUDE_DIR})
 target_link_libraries(migrate PRIVATE ${MARIADB_LIBRARIES})
+
+# Link with gcov for coverage support in Debug builds
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_link_libraries(migrate PRIVATE gcov)
+endif()
