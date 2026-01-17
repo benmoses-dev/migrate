@@ -1,5 +1,6 @@
 #include "db_helper.hpp"
 #include "binary.hpp"
+#include "csv.hpp"
 #include "io_helper.hpp"
 #include <iostream>
 
@@ -22,8 +23,9 @@ DBHelper::DBHelper(const TableConf *conf, const bool _useCSV)
     : fromTable(conf->tabName), toTable(conf->tabName), mapping(conf->map),
       useCSV(_useCSV), mysql(nullptr), pg(nullptr), res(nullptr) {
     getConfig(myConfig, pgConfig, useCSV);
-    // Todo: Only use mysql/mariadb is useCSV is false
-    initMysqlConnection();
+    if (!useCSV) {
+        initMysqlConnection();
+    }
     initPGConnection();
 }
 
@@ -58,15 +60,15 @@ void DBHelper::initMysqlConnection() {
 }
 
 void DBHelper::initPGConnection() {
-    std::string connInfo = "host=" + pgConfig.pghost +
-                           " port=" + std::to_string(pgConfig.pgport) +
-                           " dbname=" + pgConfig.pgname + " user=" + pgConfig.pguser +
-                           " password=" + pgConfig.pgpass;
+    const std::string connInfo =
+        "host=" + pgConfig.pghost + " port=" + std::to_string(pgConfig.pgport) +
+        " dbname=" + pgConfig.pgname + " user=" + pgConfig.pguser +
+        " password=" + pgConfig.pgpass;
 
     std::cout << "PostgreSQL connection info: " << connInfo << std::endl;
     pg.reset(PQconnectdb(connInfo.c_str()));
     if (PQstatus(pg.get()) != CONNECTION_OK) {
-        std::string error =
+        const std::string error =
             std::string("PostgreSQL connection failed: ") + PQerrorMessage(pg.get());
         throw std::runtime_error(error);
     }
@@ -74,7 +76,7 @@ void DBHelper::initPGConnection() {
 
 void DBHelper::startCopy() {
     std::string copyCmd = "COPY " + toTable + " (";
-    for (size_t i = 0; i < mapping.size(); i++) {
+    for (std::size_t i = 0; i < mapping.size(); i++) {
         copyCmd += mapping[i].name;
         if (i + 1 < mapping.size())
             copyCmd += ", ";
@@ -82,14 +84,15 @@ void DBHelper::startCopy() {
     copyCmd += ") FROM STDIN BINARY";
     PGresult *r = PQexec(pg.get(), copyCmd.c_str());
     if (PQresultStatus(r) != PGRES_COMMAND_OK) {
-        std::string error = std::string("COPY start failed: ") + PQerrorMessage(pg.get());
+        const std::string error =
+            std::string("COPY start failed: ") + PQerrorMessage(pg.get());
         PQclear(r);
         throw std::runtime_error(error);
     }
     PQclear(r);
-    auto header = makeBinaryHeader();
+    const auto header = makeBinaryHeader();
     if (PQputCopyData(pg.get(), header.data(), static_cast<int>(header.size())) <= 0) {
-        std::string error =
+        const std::string error =
             std::string("COPY header write failed: ") + PQerrorMessage(pg.get());
         throw std::runtime_error(error);
     }
@@ -98,36 +101,35 @@ void DBHelper::startCopy() {
 MYSQL_ROW DBHelper::getMysqlRow() { return mysql_fetch_row(res.get()); }
 
 void DBHelper::writeRow(const MYSQL_ROW &row) {
-    const ui ncols = mysql_num_fields(res.get());
+    const std::uint32_t ncols = mysql_num_fields(res.get());
     std::vector<std::string> result;
     result.reserve(ncols);
-    for (ui i = 0; i < ncols; i++) {
+    for (std::uint32_t i = 0; i < ncols; i++) {
         result.push_back(row[i] ? row[i] : "");
     }
     const auto data = makeBinaryRow(result, mapping);
     if (PQputCopyData(pg.get(), data.data(), static_cast<int>(data.size())) <= 0) {
-        std::string error =
+        const std::string error =
             std::string("COPY binary row write failed: ") + PQerrorMessage(pg.get());
         throw std::runtime_error(error);
     }
 }
 
 void DBHelper::endCopy() {
-    auto trailer = makeBinaryTrailer();
+    const auto trailer = makeBinaryTrailer();
     if (PQputCopyData(pg.get(), trailer.data(), static_cast<int>(trailer.size())) <= 0) {
-        std::string error =
+        const std::string error =
             std::string("PQputCopyData trailer failed: ") + PQerrorMessage(pg.get());
         throw std::runtime_error(error);
     }
     if (PQputCopyEnd(pg.get(), nullptr) <= 0) {
-        std::string error =
+        const std::string error =
             std::string("PQputCopyEnd failed: ") + PQerrorMessage(pg.get());
         throw std::runtime_error(error);
     }
-
     while (PGresult *r = PQgetResult(pg.get())) {
         if (PQresultStatus(r) != PGRES_COMMAND_OK) {
-            std::string error =
+            const std::string error =
                 "COPY finish failed: " + std::string(PQerrorMessage(pg.get()));
             PQclear(r);
             throw std::runtime_error(error);
@@ -137,7 +139,7 @@ void DBHelper::endCopy() {
 }
 
 void DBHelper::createTable() {
-    // Todo: query mysql and get CREATE TABLE statement
+    // Todo: query mysql and get CREATE TABLE statement (or use config?)
     const std::string schema;
     PGresult *r = PQexec(pg.get(), schema.c_str());
     if (PQresultStatus(r) != PGRES_COMMAND_OK) {
@@ -150,7 +152,7 @@ void DBHelper::createTable() {
 }
 
 void DBHelper::disableTriggers() {
-    std::string sql = "ALTER TABLE " + toTable + " DISABLE TRIGGER ALL";
+    const std::string sql = "ALTER TABLE " + toTable + " DISABLE TRIGGER ALL";
     PGresult *r = PQexec(pg.get(), sql.c_str());
     PQclear(r);
 }
@@ -175,22 +177,27 @@ void DBHelper::createIndexes() {
 }
 
 void DBHelper::enableTriggers() {
-    std::string sql = "ALTER TABLE " + toTable + " ENABLE TRIGGER ALL";
+    const std::string sql = "ALTER TABLE " + toTable + " ENABLE TRIGGER ALL";
     PGresult *r = PQexec(pg.get(), sql.c_str());
     PQclear(r);
 }
 
 void DBHelper::migrateTable() {
-    createTable();
+    // createTable();
     disableTriggers();
-    dropIndexes();
+    // dropIndexes();
     startCopy();
-    MYSQL_ROW row;
-    while ((row = getMysqlRow())) {
-        writeRow(row);
+    if (!useCSV) {
+        MYSQL_ROW row;
+        while ((row = getMysqlRow())) {
+            writeRow(row);
+        }
+    } else {
+        // Use csv parser
+        throw std::runtime_error("CSV parsing not implemented yet!");
     }
     endCopy();
-    createIndexes();
+    // createIndexes();
     enableTriggers();
     // Todo: recreate foreign key constraints
 }

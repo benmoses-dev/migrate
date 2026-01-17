@@ -1,5 +1,4 @@
 #include "binary.hpp"
-#include "csv.hpp"
 #include "db_helper.hpp"
 #include <CLI/CLI.hpp>
 #include <array>
@@ -65,7 +64,7 @@ int main() {
      */
 
     const bool useCSV = false;
-    const ui max_threads = std::thread::hardware_concurrency();
+    const std::uint32_t max_threads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     threads.reserve(max_threads);
     std::atomic<std::size_t> next{0};
@@ -74,7 +73,7 @@ int main() {
 
     {
         ThreadJoiner joiner{threads};
-        for (ui i = 0; i < max_threads; i++) {
+        for (std::uint32_t i = 0; i < max_threads; i++) {
             threads.emplace_back([&maps, &next, &eptr, &stop]() {
                 while (!stop) {
                     const std::size_t at = next.fetch_add(1, std::memory_order_relaxed);
