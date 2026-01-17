@@ -37,7 +37,8 @@ std::vector<char> inetConverter(const std::string &s);
 std::vector<char> enumConverter(const std::string &s);
 
 std::vector<char> makeBinaryRow(
-    const std::vector<std::string> &mysqlRow, const std::vector<ColumnMapping> &mapping,
+    const std::vector<std::string> &row,
+    const std::unordered_map<std::string, PgType> &mapping,
     const std::unordered_map<
         PgType, std::function<std::vector<char>(const std::string &)>> &converters);
 

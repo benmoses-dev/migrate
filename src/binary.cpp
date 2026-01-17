@@ -408,28 +408,33 @@ std::vector<char> enumConverter(const std::string &s) {
 }
 
 std::vector<char> makeBinaryRow(
-    const std::vector<std::string> &mysqlRow, const std::vector<ColumnMapping> &mapping,
+    const std::vector<std::string> &row,
+    const std::unordered_map<std::string, PgType> &mapping,
     const std::unordered_map<
         PgType, std::function<std::vector<char>(const std::string &)>> &converters) {
     std::vector<char> out;
     int16_t ncols = htons(static_cast<int16_t>(mapping.size()));
     out.insert(out.end(), reinterpret_cast<char *>(&ncols),
                reinterpret_cast<char *>(&ncols) + 2);
-    for (std::size_t i = 0; i < mapping.size(); i++) {
-        const std::string &val = mysqlRow[i];
+    for (std::size_t i = 0; i < row.size(); i++) {
+        const std::string &val = row[i];
         if (val.empty()) {
             int32_t nullLen = htonl(-1);
             out.insert(out.end(), reinterpret_cast<char *>(&nullLen),
                        reinterpret_cast<char *>(&nullLen) + 4);
             continue;
         }
-        const auto &t = mapping[i].type;
-        const auto &converter = converters.at(t);
-        const auto &buf = converter(val);
-        int32_t len = htonl(static_cast<int32_t>(buf.size()));
-        out.insert(out.end(), reinterpret_cast<char *>(&len),
-                   reinterpret_cast<char *>(&len) + 4);
-        out.insert(out.end(), buf.begin(), buf.end());
+        try {
+            const auto &t = mapping.at(val);
+            const auto &converter = converters.at(t); // Will throw if it doesn't exist
+            const auto &buf = converter(val);
+            int32_t len = htonl(static_cast<int32_t>(buf.size()));
+            out.insert(out.end(), reinterpret_cast<char *>(&len),
+                       reinterpret_cast<char *>(&len) + 4);
+            out.insert(out.end(), buf.begin(), buf.end());
+        } catch (const std::out_of_range &e) {
+            throw std::runtime_error("Unknown column: " + val);
+        }
     }
     return out;
 }

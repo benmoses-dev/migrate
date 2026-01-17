@@ -36,7 +36,7 @@ class DBHelper {
   private:
     const std::string fromTable;
     const std::string toTable;
-    const std::vector<ColumnMapping> &mapping;
+    const std::unordered_map<std::string, PgType> &mapping;
     const bool useCSV;
     const std::unordered_map<PgType,
                              std::function<std::vector<char>(const std::string &)>>

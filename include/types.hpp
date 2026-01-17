@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <vector>
+#include <unordered_map>
 
 struct MysqlConfig {
     std::string myname;
@@ -37,12 +37,7 @@ enum class PgType {
     ENUM
 };
 
-struct ColumnMapping {
-    std::string name;
-    PgType type;
-};
-
 struct TableConf {
     const std::string tabName;
-    const std::vector<ColumnMapping> map;
+    const std::unordered_map<std::string, PgType> map;
 };
