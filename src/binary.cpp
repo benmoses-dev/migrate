@@ -22,6 +22,9 @@ std::vector<char> int16Converter(const std::string &s) {
 }
 
 std::vector<char> int32Converter(const std::string &s) {
+    if (s.empty()) {
+        throw std::invalid_argument("Empty string for int32");
+    }
     const int32_t val = std::stoi(s);
     const int32_t be = htonl(val);
     std::vector<char> out(4);
@@ -30,6 +33,9 @@ std::vector<char> int32Converter(const std::string &s) {
 }
 
 std::vector<char> int64Converter(const std::string &s) {
+    if (s.empty()) {
+        throw std::invalid_argument("Empty string for int64");
+    }
     const int64_t val = std::stoll(s);
     const int64_t be = htobe64(val);
     std::vector<char> out(8);
@@ -169,18 +175,88 @@ std::vector<char> timestampConverter(const std::string &s) {
 
 /**
  * UTC microseconds since 2000-01-01
- * Todo: add support for fractional seconds
  */
 std::vector<char> timestamptzConverter(const std::string &s) {
+    if (s.empty()) {
+        throw std::invalid_argument("Empty string for timestamptz");
+    }
     std::tm tm = {};
-    strptime(s.c_str(), "%Y-%m-%d %H:%M:%S", &tm); // DateTime "YYYY-MM-DD HH:MM:SS"
-    const time_t t = timegm(&tm);                  // Seconds since 1970 UTC
+    std::int32_t microseconds = 0;
+    std::int32_t tzOffset = 0; // Offset in seconds
+    const char *remaining =
+        strptime(s.c_str(), "%Y-%m-%d %H:%M:%S", &tm); // DateTime "YYYY-MM-DD HH:MM:SS"
+    if (!remaining) {
+        throw std::invalid_argument("Invalid timestamptz format: " + s);
+    }
+    if (*remaining == '.') {
+        remaining++;
+        char frac_str[7] = "000000";
+        std::int32_t i = 0;
+        while (i < 6 && std::isdigit(*remaining)) {
+            frac_str[i] = *remaining;
+            i++;
+            remaining++;
+        }
+        while (i < 6) {
+            frac_str[i] = '0';
+            i++;
+        }
+        microseconds = std::atoi(frac_str);
+    }
+    // Handle timezone offset: +00:00, -05:00, +0530, Z, etc.
+    if (*remaining != '\0') {
+        while (*remaining == ' ' || *remaining == '\t') {
+            remaining++;
+        }
+        if (*remaining == 'Z') {
+            // UTC indicator
+            tzOffset = 0;
+        } else if (*remaining == '+' || *remaining == '-') {
+            const char sign = *remaining;
+            remaining++;
+            std::int32_t tzHours = 0;
+            std::int32_t tzMins = 0;
+            bool parsed = false;
+            // Try HH:MM format first
+            if (sscanf(remaining, "%d:%d", &tzHours, &tzMins) == 2) {
+                parsed = true;
+            }
+            // HHMM format
+            else if (sscanf(remaining, "%2d%2d", &tzHours, &tzMins) == 2) {
+                parsed = true;
+            }
+            // HH format
+            else if (sscanf(remaining, "%d", &tzHours) == 1) {
+                tzMins = 0;
+                parsed = true;
+            }
+            if (!parsed) {
+                throw std::invalid_argument("Invalid timezone format: " + s);
+            }
+            if (tzHours < -12 || tzHours > 14 || tzMins < 0 || tzMins > 59) {
+                throw std::invalid_argument("Invalid timezone offset values: " + s);
+            }
+            tzOffset = (tzHours * 3600) + (tzMins * 60);
+            if (sign == '-') {
+                tzOffset = -tzOffset;
+            }
+        }
+        // If no timezone info, assume UTC
+    }
+    /**
+     * Convert to UTC by subtracting the timezone offset
+     * Example: "2024-01-15 14:30:25+05:00" means 14:30:25 in +05:00 timezone
+     * To get UTC: 14:30:25 - 05:00 = 09:30:25 UTC
+     */
+    const time_t t = timegm(&tm); // Seconds since 1970 UTC
+    const time_t utc = t - tzOffset;
     /**
      * PostgreSQL epoch starts 2000-01-01
      * So remove the seconds between 1970 and 2000
      */
     const time_t pgEpoch = 946684800;
-    const int64_t micros = static_cast<int64_t>((t - pgEpoch) * 1000000);
+    const int64_t micros =
+        static_cast<int64_t>(((utc - pgEpoch) * 1000000) + microseconds);
     const int64_t be = htobe64(micros);
     std::vector<char> out(8);
     memcpy(out.data(), &be, 8);
@@ -188,11 +264,18 @@ std::vector<char> timestamptzConverter(const std::string &s) {
 }
 
 std::vector<char> macaddrConverter(const std::string &s) {
+    if (s.empty()) {
+        throw std::invalid_argument("Empty string for macaddr");
+    }
     std::vector<char> out(6);
     std::uint32_t bytes[6];
-    sscanf(s.c_str(),
-           "%x:%x:%x:%x:%x:%x", // Read hex characters (1 byte each)
-           &bytes[0], &bytes[1], &bytes[2], &bytes[3], &bytes[4], &bytes[5]);
+    const std::int32_t matched =
+        sscanf(s.c_str(),
+               "%x:%x:%x:%x:%x:%x", // Read hex characters (1 byte each)
+               &bytes[0], &bytes[1], &bytes[2], &bytes[3], &bytes[4], &bytes[5]);
+    if (matched != 6) {
+        throw std::invalid_argument("Invalid MAC address format: " + s);
+    }
     for (size_t i = 0; i < 6; i++) {
         out[i] = static_cast<char>(bytes[i]);
     }
@@ -204,22 +287,28 @@ std::vector<char> macaddrConverter(const std::string &s) {
  * Todo: Handle different uuid formats
  */
 std::vector<char> uuidConverter(const std::string &s) {
-    if (s.empty()) {
+    const std::size_t sz = s.size();
+    if (sz == 0) {
         throw std::invalid_argument("Empty string for uuid");
-    }
-    if (s.size() != 36) {
-        throw std::invalid_argument("Invalid UUID length: " + s);
-    }
-    if (s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-') {
-        throw std::invalid_argument("Invalid UUID format (missing hyphens): " + s);
     }
     std::vector<char> out(16);
     std::uint32_t bytes[16];
-    const std::int32_t matched =
-        sscanf(s.c_str(), "%2x%2x%2x%2x-%2x%2x-%2x%2x-%2x%2x-%2x%2x%2x%2x%2x%2x",
-               &bytes[0], &bytes[1], &bytes[2], &bytes[3], &bytes[4], &bytes[5],
-               &bytes[6], &bytes[7], &bytes[8], &bytes[9], &bytes[10], &bytes[11],
-               &bytes[12], &bytes[13], &bytes[14], &bytes[15]);
+    std::int32_t matched = 0;
+    if (sz == 36 && s[8] == '-' && s[13] == '-' && s[18] == '-' && s[23] == '-') {
+        matched =
+            sscanf(s.c_str(), "%2x%2x%2x%2x-%2x%2x-%2x%2x-%2x%2x-%2x%2x%2x%2x%2x%2x",
+                   &bytes[0], &bytes[1], &bytes[2], &bytes[3], &bytes[4], &bytes[5],
+                   &bytes[6], &bytes[7], &bytes[8], &bytes[9], &bytes[10], &bytes[11],
+                   &bytes[12], &bytes[13], &bytes[14], &bytes[15]);
+    } else if (sz == 32) {
+        matched =
+            sscanf(s.c_str(), "%2x%2x%2x%2x-%2x%2x-%2x%2x-%2x%2x-%2x%2x%2x%2x%2x%2x",
+                   &bytes[0], &bytes[1], &bytes[2], &bytes[3], &bytes[4], &bytes[5],
+                   &bytes[6], &bytes[7], &bytes[8], &bytes[9], &bytes[10], &bytes[11],
+                   &bytes[12], &bytes[13], &bytes[14], &bytes[15]);
+    } else {
+        throw std::invalid_argument("Invalid UUID length: " + s);
+    }
     if (matched != 16) {
         throw std::invalid_argument("Invalid UUID format: " + s);
     }
