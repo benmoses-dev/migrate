@@ -6,14 +6,12 @@
 #include <memory>
 #include <string>
 
-using ui = unsigned int;
-
 struct MysqlConfig {
     std::string myname;
     std::string myhost;
     std::string myuser;
     std::string mypass;
-    ui myport;
+    std::uint32_t myport;
 };
 
 struct PgsqlConfig {
@@ -21,7 +19,7 @@ struct PgsqlConfig {
     std::string pghost;
     std::string pguser;
     std::string pgpass;
-    ui pgport;
+    std::uint32_t pgport;
 };
 
 enum class PgType { INT32, INT64, TEXT, TIMESTAMPTZ, MACADDR };
