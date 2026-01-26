@@ -76,7 +76,5 @@ class DBHelper {
     void initMysqlConnection();
     void createTable();
     void disableTriggers();
-    void dropIndexes();
-    void createIndexes();
     void enableTriggers();
 };

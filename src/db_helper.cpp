@@ -2,18 +2,21 @@
 #include "io_helper.hpp"
 
 void MysqlDeleter::operator()(MYSQL *mysql) const noexcept {
-    if (mysql)
+    if (mysql) {
         mysql_close(mysql);
+    }
 }
 
 void MysqlResDeleter::operator()(MYSQL_RES *res) const noexcept {
-    if (res)
+    if (res) {
         mysql_free_result(res);
+    }
 }
 
 void PgDeleter::operator()(PGconn *pg) const noexcept {
-    if (pg)
+    if (pg) {
         PQfinish(pg);
+    }
 }
 
 DBHelper::DBHelper(const TableConf *conf, const bool _useCSV)
@@ -111,14 +114,18 @@ void DBHelper::writeData(const std::vector<Field> &result) {
 }
 
 void DBHelper::writeMysqlRow(const MYSQL_ROW &row) {
-    // Todo: Need to get the column name at the same time for converters
-    // const std::uint32_t ncols = mysql_num_fields(res.get());
-    // std::vector<std::string> result;
-    // result.reserve(ncols);
-    // for (std::uint32_t i = 0; i < ncols; i++) {
-    //     result.push_back(row[i] ? row[i] : "");
-    // }
-    // writeData(result);
+    const std::uint32_t ncols = mysql_num_fields(res.get());
+    if (mapping.size() != ncols) {
+        throw std::runtime_error("We seem to have more columns than specified...");
+    }
+    std::vector<Field> result;
+    result.reserve(ncols);
+    std::size_t col = 0;
+    for (const auto &m : mapping) {
+        result.emplace_back(m.first, row[col] ? row[col] : "");
+        col++;
+    }
+    writeData(result);
 }
 
 void DBHelper::writeCSVRow(const csv::CSVRow &row) {
@@ -174,25 +181,6 @@ void DBHelper::disableTriggers() {
     PQclear(r);
 }
 
-void DBHelper::dropIndexes() {
-    // Todo: query pg_indexes
-    std::string sql = "DROP INDEX IF EXISTS ...";
-}
-
-void DBHelper::createIndexes() {
-    const std::vector<std::string> idxStatements;
-    for (auto &stmt : idxStatements) {
-        PGresult *r = PQexec(pg.get(), stmt.c_str());
-        if (PQresultStatus(r) != PGRES_COMMAND_OK) {
-            std::string error =
-                "CREATE INDEX failed: " + std::string(PQerrorMessage(pg.get()));
-            PQclear(r);
-            throw std::runtime_error(error);
-        }
-        PQclear(r);
-    }
-}
-
 void DBHelper::enableTriggers() {
     const std::string sql = "ALTER TABLE " + toTable + " ENABLE TRIGGER ALL";
     PGresult *r = PQexec(pg.get(), sql.c_str());
@@ -202,7 +190,6 @@ void DBHelper::enableTriggers() {
 void DBHelper::migrateTable() {
     // createTable();
     disableTriggers();
-    // dropIndexes();
     startCopy();
     if (!useCSV) {
         MYSQL_ROW row;
@@ -216,7 +203,6 @@ void DBHelper::migrateTable() {
         }
     }
     endCopy();
-    // createIndexes();
     enableTriggers();
     // Todo: recreate foreign key constraints
 }
