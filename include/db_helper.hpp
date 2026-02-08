@@ -29,7 +29,8 @@ using PgPtr = std::unique_ptr<PGconn, PgDeleter>;
 
 class DBHelper {
   public:
-    DBHelper(const TableConf *config, const bool useCSV);
+    DBHelper(const TableConf *config, const bool useCSV, const MysqlConfig &mConfig,
+             const PgsqlConfig &pConfig);
 
     void migrateTable();
 

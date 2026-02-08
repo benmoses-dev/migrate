@@ -2,6 +2,17 @@
 #include <iostream>
 
 void getConfig(MysqlConfig &myConfig, PgsqlConfig &pgConfig, const bool useCSV) {
+    myConfig.myname = "sourcedb";
+    myConfig.myhost = "127.0.0.1";
+    myConfig.myuser = "mariadbuser";
+    myConfig.mypass = "mariadbpass";
+    myConfig.myport = 33060;
+    pgConfig.pgname = "destdb";
+    pgConfig.pghost = "127.0.0.1";
+    pgConfig.pguser = "pgsqluser";
+    pgConfig.pgpass = "pgsqlpass";
+    pgConfig.pgport = 54320;
+    return;
     if (!useCSV) {
         std::cout << "Mysql database name: ";
         std::cin >> myConfig.myname;

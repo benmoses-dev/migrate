@@ -72,3 +72,8 @@ target_link_libraries(migrate PRIVATE ${MARIADB_LIBRARIES})
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_libraries(migrate PRIVATE gcov)
 endif()
+
+# Populate executable for benchmarking
+add_executable(populate src/populate.cpp)
+target_include_directories(populate PRIVATE ${MARIADB_INCLUDE_DIR})
+target_link_libraries(populate PRIVATE ${MARIADB_LIBRARIES})

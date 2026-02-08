@@ -1,5 +1,4 @@
 #include "db_helper.hpp"
-#include "io_helper.hpp"
 
 void MysqlDeleter::operator()(MYSQL *mysql) const noexcept {
     if (mysql) {
@@ -19,10 +18,11 @@ void PgDeleter::operator()(PGconn *pg) const noexcept {
     }
 }
 
-DBHelper::DBHelper(const TableConf *conf, const bool _useCSV)
+DBHelper::DBHelper(const TableConf *conf, const bool _useCSV, const MysqlConfig &mConfig,
+                   const PgsqlConfig &pConfig)
     : fromTable(conf->tabName), toTable(conf->tabName), mapping(conf->map),
-      useCSV(_useCSV), mysql(nullptr), pg(nullptr), res(nullptr) {
-    getConfig(myConfig, pgConfig, useCSV);
+      useCSV(_useCSV), mysql(nullptr), pg(nullptr), res(nullptr), myConfig(mConfig),
+      pgConfig(pConfig) {
     if (!useCSV) {
         initMysqlConnection();
     }
@@ -87,7 +87,7 @@ void DBHelper::startCopy() {
     }
     copyCmd += ") FROM STDIN BINARY";
     PGresult *r = PQexec(pg.get(), copyCmd.c_str());
-    if (PQresultStatus(r) != PGRES_COMMAND_OK) {
+    if (PQresultStatus(r) != PGRES_COPY_IN) {
         const std::string error =
             std::string("COPY start failed: ") + PQerrorMessage(pg.get());
         PQclear(r);
