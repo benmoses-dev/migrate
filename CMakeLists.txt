@@ -3,9 +3,6 @@ include(FetchContent)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_C_COMPILER gcc)
-set(CMAKE_CXX_COMPILER g++)
-
 project(Migrate LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -14,14 +11,16 @@ set(CMAKE_CXX_EXTENSIONS ON)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING 
-        "Choose the build type (Debug, Release, RelWithDebInfo)" FORCE)
+        "Choose the build type (Debug, Release, RelWithDebInfo, Profile)" FORCE)
 endif()
 
 option(FAST_BUILD "Enable aggressive native optimisations. Not portable." OFF)
 
-# Warnings may get annoying but it will help in the long run...
 set(CMAKE_CXX_FLAGS_DEBUG 
     "-Og -g3 -Wall -Wextra -Wshadow -Wconversion -Wfloat-equal -Wpedantic -Werror=return-type -pthread --coverage")
+
+set(CMAKE_CXX_FLAGS_PROFILE 
+    "-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Wall -Wextra -Wshadow -Wconversion -Wfloat-equal -Wpedantic -Werror=return-type -pthread --coverage")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -march=x86-64-v2 -mtune=generic -DNDEBUG -pthread")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
