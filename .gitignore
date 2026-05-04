@@ -1,13 +1,7 @@
 build/
 **/build/
-build-release/
-**/build-release/
-build-debug/
-**/build-debug/
-build-debwithrelinfo/
-**/build-debwithrelinfo/
-build-fast/
-**/build-fast/
+build-*/
+**/build-*/
 
 CMakeFiles/
 **/CMakeFiles/
@@ -50,3 +44,5 @@ lib/
 **/*.swp
 **/*.swo
 
+perf.*
+**/perf.*
