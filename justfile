@@ -25,6 +25,6 @@ perf-dwarf:
     perf record --call-graph dwarf -F 99 ./build-profile/migrate
     perf script > out.perf
 
-gdb:
-    gdb ./build-debug/migrate
+valgrind:
+    valgrind ./build-debug/migrate
 
